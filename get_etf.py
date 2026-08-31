@@ -375,8 +375,11 @@ def mid_on_or_before(mid_series, target_date: datetime):
 
 
 if __name__ == "__main__":
-    anchor = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    target_date = anchor.strftime("%Y-%m-%d")
+
+    now = datetime.now()
+    target_date_detailed: str = now.strftime("%Y-%m-%d %H:%M:%S.") + f"{now.microsecond // 1000:03d}"
+    anchor = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    target_date: str = anchor.strftime("%Y-%m-%d")
 
     # Nominal lookback dates, shared across all tickers.
     lookback_dates = {
@@ -453,7 +456,7 @@ if __name__ == "__main__":
 
     df = pd.DataFrame(results)
     df_rates = pd.DataFrame(rate_results)
-    print(f"\nToday's date is: {target_date}")
+    print(f"\nToday's date is: {target_date_detailed}")
     print(f"=== Summary (mid prices, normalized to {oldest_months / 12:.2f} "
           "years ago) ===")
     print(df.to_string(index=False))
@@ -472,13 +475,13 @@ if __name__ == "__main__":
 
     with open("etf_values.html", "w", encoding="utf-8") as f:
         f.write("<html><head><meta charset=\"utf-8\">"
-                f"<title>ETF mid prices - {target_date}</title>"
+                f"<title>ETFs - {target_date}</title>"
                 f"<style>{HTML_STYLE}</style></head><body>\n")
-        f.write(f"<p>Today's date is: {target_date}</p>\n")
+        f.write(f"<p>Today's date is: {target_date_detailed}</p>\n")
         f.write(render_html_table(df, id_columns, value_headers,
                                    date_header_list, ratio_cell,
                                    tooltips=tooltips))
-        f.write("\n<h2>Annualized return to today</h2>\n")
+        f.write("\n<h2>Annualized returns (to present day)</h2>\n")
         f.write(render_html_table(df_rates, id_columns, value_headers,
                                    date_header_list, rate_cell,
                                    tooltips=tooltips))
