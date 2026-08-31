@@ -31,8 +31,10 @@ that does have data.
 Lookback dates are computed as target_date - round(months * 30.42) days.
 If a ticker has no data on that exact date (weekend/holiday), the mid from
 the next available trading day is used instead. Column headers show years
-ago (0.00, 0.25, 0.50, 1.00, 2.00, 3.00, 4.00, 5.00), not the actual
-resolved date.
+ago (0.00, 0.25, 0.50, 1.00, 2.00, 3.00, 4.00, 5.00) plus, in the HTML
+report, the nominal lookback date (YYYY-MM) as a sub-header - this is
+still the nominal date, not the actual resolved trading day, which can
+differ per ticker.
 
 Every value is normalized (divided) by the oldest lookback value present
 (currently 5 years ago, i.e. max(LOOKBACK_MONTHS)), so that column reads
@@ -94,6 +96,46 @@ NAMES = {
     "JE00B1VS3770": "WisdomTree Physical Gold (ETC)",
 }
 
+# Fund size (AUM) and index description shown as a hover tooltip on the name
+# cell. Manually curated, like TICKERS/NAMES above - yfinance's .info does
+# not reliably expose this data for these European-listed UCITS ETFs
+# (totalAssets is missing for some tickers, longBusinessSummary/category are
+# unavailable for all of them). Approximate, researched as of 2026-08-31 -
+# worth re-checking periodically against issuer factsheets or justetf.com.
+FUND_SIZE = {
+    "IE0032077012": "$13.7B (Jul 2026)",
+    "IE00B5KQNG97": "$10.1B (Jul 2026)",
+    "IE00B53QDK08": "$1.8B (Jul 2026)",
+    "DE000A0F5UJ7": "$4.2B (Jul 2026)",
+    "IE00B3RBWM25": "$26.2B (Jul 2026)",
+    "IE00BKM4GZ66": "$44.5B (Jul 2026)",
+    "IE00B4K48X80": "$18.7B (Jul 2026)",
+    "LU1681047236": "$4.8B (Jul 2026)",
+    "JE00B1VS3770": "$7.6B (Aug 2026)",
+}
+
+INDEX_DESCRIPTION = {
+    "IE0032077012": "Tracks the Nasdaq-100 Index, the 100 largest "
+                     "non-financial companies listed on Nasdaq.",
+    "IE00B5KQNG97": "Tracks the S&P 500 Index, the 500 largest publicly "
+                     "traded US companies by market value.",
+    "IE00B53QDK08": "Tracks the MSCI Japan Index, covering large- and "
+                     "mid-cap Japanese stocks.",
+    "DE000A0F5UJ7": "Tracks the STOXX Europe 600 Banks Index, major bank "
+                     "stocks from the pan-European STOXX 600.",
+    "IE00B3RBWM25": "Tracks the FTSE All-World Index, large- and mid-cap "
+                     "stocks across developed and emerging markets "
+                     "worldwide.",
+    "IE00BKM4GZ66": "Tracks the MSCI Emerging Markets IMI Index, large-, "
+                     "mid-, and small-cap stocks across emerging markets.",
+    "IE00B4K48X80": "Tracks the MSCI Europe Index, large- and mid-cap "
+                     "stocks from developed European countries.",
+    "LU1681047236": "Tracks the EURO STOXX 50 Index, the 50 largest "
+                     "blue-chip companies in the eurozone.",
+    "JE00B1VS3770": "Physically-backed ETC holding allocated gold bullion, "
+                     "tracking the spot price of gold in USD.",
+}
+
 DAYS_PER_MONTH = 30.42
 LOOKBACK_MONTHS = [3, 6, 12, 24, 36, 48, 60]
 MAX_FORWARD_FILL_DAYS = 14
@@ -113,6 +155,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 18px; }
 table { border-collapse: collapse; margin-top: 0.5em; }
 th, td { border: 1px solid #bbb; padding: 6px 12px; text-align: center; }
 th { background-color: #f0f0f0; }
+th.date-row { font-weight: normal; font-size: 0.8em; color: #666; }
 td:nth-child(2) { text-align: left; }
 """
 
@@ -147,22 +190,39 @@ def rate_cell(values: list, i: int):
 
 
 def render_html_table(df: pd.DataFrame, id_columns: list, value_headers: list,
-                       cell_fn) -> str:
+                       date_headers: list, cell_fn, tooltips: dict = None,
+                       tooltip_column: str = "name") -> str:
     """Build an HTML table for `df` with a spanning "years ago" header row
-    above `value_headers`. `cell_fn(values, i)` formats each value column,
-    returning (text, color) for the i-th value in that row."""
+    above `value_headers`, followed by a `date_headers` sub-row (the nominal
+    lookback date for each value column). `cell_fn(values, i)` formats each
+    value column, returning (text, color) for the i-th value in that row.
+
+    If `tooltips` is given (ISIN -> tooltip text), it's attached as a
+    `title` attribute to each row's `tooltip_column` cell, shown by the
+    browser on hover."""
     lines = ["<table>", "  <thead>", "    <tr>",
              f'      <th colspan="{len(id_columns)}"></th>',
              f'      <th colspan="{len(value_headers)}">years ago</th>',
              "    </tr>", "    <tr>"]
     for col in id_columns + value_headers:
         lines.append(f"      <th>{html.escape(col)}</th>")
-    lines += ["    </tr>", "  </thead>", "  <tbody>"]
+    lines.append("    </tr>")
+
+    lines.append("    <tr>")
+    for _ in id_columns:
+        lines.append('      <th class="date-row"></th>')
+    for date in date_headers:
+        lines.append(f'      <th class="date-row">{html.escape(date)}</th>')
+    lines.append("    </tr>")
+
+    lines += ["  </thead>", "  <tbody>"]
 
     for _, row in df.iterrows():
         lines.append("    <tr>")
         for col in id_columns:
-            lines.append(f"      <td>{html.escape(str(row[col]))}</td>")
+            tooltip = tooltips.get(row["isin"]) if tooltips and col == tooltip_column else None
+            title_attr = f' title="{html.escape(tooltip)}"' if tooltip else ""
+            lines.append(f"      <td{title_attr}>{html.escape(str(row[col]))}</td>")
 
         values = [row[h] for h in value_headers]
         for i in range(len(values)):
@@ -328,6 +388,13 @@ if __name__ == "__main__":
     years_ago_headers.update({
         months: f"{months / 12:.2f}" for months in LOOKBACK_MONTHS
     })
+    # Nominal lookback date (YYYY-MM) shown as a sub-header for each
+    # years-ago column - same nominal date for every ticker, distinct from
+    # the actual resolved trading day used per ticker.
+    date_headers = {0: anchor.strftime("%Y-%m")}
+    date_headers.update({
+        months: date.strftime("%Y-%m") for months, date in lookback_dates.items()
+    })
 
     history_start = (min(lookback_dates.values())
                       - timedelta(days=MAX_FORWARD_FILL_DAYS)).strftime("%Y-%m-%d")
@@ -396,13 +463,23 @@ if __name__ == "__main__":
     id_columns = ["isin", "name", "ticker"]
     value_headers = [years_ago_headers[months]
                       for months in [0] + LOOKBACK_MONTHS]
+    date_header_list = [date_headers[months]
+                         for months in [0] + LOOKBACK_MONTHS]
+    tooltips = {
+        isin: f"Size: {FUND_SIZE[isin]}\nTracks: {INDEX_DESCRIPTION[isin]}"
+        for isin in NAMES
+    }
 
     with open("etf_values.html", "w", encoding="utf-8") as f:
         f.write("<html><head><meta charset=\"utf-8\">"
                 f"<title>ETF mid prices - {target_date}</title>"
                 f"<style>{HTML_STYLE}</style></head><body>\n")
         f.write(f"<p>Today's date is: {target_date}</p>\n")
-        f.write(render_html_table(df, id_columns, value_headers, ratio_cell))
+        f.write(render_html_table(df, id_columns, value_headers,
+                                   date_header_list, ratio_cell,
+                                   tooltips=tooltips))
         f.write("\n<h2>Annualized return to today</h2>\n")
-        f.write(render_html_table(df_rates, id_columns, value_headers, rate_cell))
+        f.write(render_html_table(df_rates, id_columns, value_headers,
+                                   date_header_list, rate_cell,
+                                   tooltips=tooltips))
         f.write("\n</body></html>\n")
