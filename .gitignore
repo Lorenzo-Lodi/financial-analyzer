@@ -1,0 +1,6 @@
+__pycache__/
+
+.idea/
+etf_values.csv
+etf_values.html
+etf_price_cache.db

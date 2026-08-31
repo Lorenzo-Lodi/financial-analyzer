@@ -1,0 +1,33 @@
+name: daily-run
+on:
+  schedule:
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+permissions:
+  pages: write
+  contents: read
+  id-token: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: pip install -r requirements.txt
+      - run: python ./get_etf.py
+      - run: find . -name "etf_values.html"      
+      - run: mkdir output
+      - run: cp ./etf_values.html ./output/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: output/
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/deploy-pages@v4

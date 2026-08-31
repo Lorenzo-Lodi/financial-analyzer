@@ -1,0 +1,408 @@
+"""
+Fetch the "mid" price (average of High and Low) for a list of ETFs
+identified by ISIN, using Yahoo Finance via the yfinance package, both for
+a target date and for several lookback points in the past (3 months,
+6 months, 1 year, 2 years, 3 years, 4 years, 5 years).
+
+Yahoo Finance does not index instruments by ISIN natively, so each ISIN is
+mapped below to a known-working Yahoo ticker symbol (confirmed by trial).
+
+Confirmed tickers (as of 2026-08-10):
+
+    ISIN            Name                                            Ticker
+    --------------  ----------------------------------------------  -------
+    IE0032077012    Invesco EQQQ Nasdaq-100 UCITS ETF                EQQQ.L
+    IE00B5KQNG97    HSBC S&P 500 UCITS ETF USD                       H4ZF.DE
+    IE00B53QDK08    iShares MSCI Japan UCITS ETF USD (Acc)           SXR5.DE
+    DE000A0F5UJ7    iShares STOXX Europe 600 Banks UCITS ETF (DE)    EXV1.DE
+    IE00B3RBWM25    Vanguard FTSE All-World UCITS ETF (USD) Dist.    VWRL.L
+    IE00BKM4GZ66    iShares Core MSCI EM IMI UCITS ETF (Acc)         EIMI.L
+    IE00B4K48X80    iShares Core MSCI Europe UCITS ETF EUR (Acc)     EUNK.DE
+    LU1681047236    Amundi Core EURO STOXX 50 UCITS ETF EUR (Acc)    V50A.DE
+    JE00B1VS3770    WisdomTree Physical Gold (ETC)                  PHAU.L
+
+Note: EQQQ.L, VWRL.L, EIMI.L and PHAU.L trade on the LSE in GBX (pence), not
+EUR/USD - convert accordingly before mixing with the other rows.
+
+The target date is today. If today has no data (weekend/holiday, or the
+market hasn't closed yet), the script falls back to the most recent day
+that does have data.
+
+Lookback dates are computed as target_date - round(months * 30.42) days.
+If a ticker has no data on that exact date (weekend/holiday), the mid from
+the next available trading day is used instead. Column headers show years
+ago (0.00, 0.25, 0.50, 1.00, 2.00, 3.00, 4.00, 5.00), not the actual
+resolved date.
+
+Every value is normalized (divided) by the oldest lookback value present
+(currently 5 years ago, i.e. max(LOOKBACK_MONTHS)), so that column reads
+1.0 for every row and the others show growth relative to the start of the
+window - a standard "rebased index" reading. Note this reference point is
+dynamic: extending LOOKBACK_MONTHS with a more distant point will shift the
+anchor and change every value already in the table.
+
+The summary is printed to the console and also written to
+etf_values.csv and etf_values.html.
+
+etf_values.html additionally includes a second table: the annualized
+return from each lookback date to today, i.e. (today / then) ** (1 /
+years_ago) - 1 - the standard trailing-return reading ("if held from then
+to now, what annualized return would that be"). The 0.00 (today) column
+has no such return and shows a dash.
+
+Downloaded OHLC data is cached locally in a SQLite database
+(etf_price_cache.db) so repeat runs don't re-fetch unchanged history.
+Rows for closed trading days (before today) are cached permanently
+(is_definitive=1). A row for today is cached as provisional
+(is_definitive=0) and is still reused by later runs on the same day (its
+imprecision doesn't matter for long-term trend tracking) - but once a new
+day starts, that row is stale (it now represents a past, closed day) and
+gets re-fetched once to pick up its true final High/Low, after which it's
+marked definitive and never re-fetched again.
+
+Install dependency first:
+    pip install yfinance --break-system-packages   # (or just `pip install yfinance`)
+"""
+import html
+import sqlite3
+import yfinance as yf
+import pandas as pd
+from datetime import datetime, timedelta
+
+# ISIN -> Yahoo ticker symbol.
+TICKERS = {
+    "IE0032077012": "EQQQ.L",
+    "IE00B5KQNG97": "H4ZF.DE",
+    "IE00B53QDK08": "SXR5.DE",
+    "DE000A0F5UJ7": "EXV1.DE",
+    "IE00B3RBWM25": "VWRL.L",
+    "IE00BKM4GZ66": "EIMI.L",
+    "IE00B4K48X80": "EUNK.DE",
+    "LU1681047236": "V50A.DE",
+    "JE00B1VS3770": "PHAU.L",
+}
+
+NAMES = {
+    "IE0032077012": "Invesco EQQQ Nasdaq-100 UCITS ETF",
+    "IE00B5KQNG97": "HSBC S&P 500 UCITS ETF USD",
+    "IE00B53QDK08": "iShares MSCI Japan UCITS ETF USD (Acc)",
+    "DE000A0F5UJ7": "iShares STOXX Europe 600 Banks UCITS ETF (DE)",
+    "IE00B3RBWM25": "Vanguard FTSE All-World UCITS ETF (USD) Dist.",
+    "IE00BKM4GZ66": "iShares Core MSCI EM IMI UCITS ETF (Acc)",
+    "IE00B4K48X80": "iShares Core MSCI Europe UCITS ETF EUR (Acc)",
+    "LU1681047236": "Amundi Core EURO STOXX 50 UCITS ETF EUR (Acc)",
+    "JE00B1VS3770": "WisdomTree Physical Gold (ETC)",
+}
+
+DAYS_PER_MONTH = 30.42
+LOOKBACK_MONTHS = [3, 6, 12, 24, 36, 48, 60]
+MAX_FORWARD_FILL_DAYS = 14
+MAX_BACKWARD_FILL_DAYS = 10
+
+CACHE_DB_PATH = "etf_price_cache.db"
+
+# Cell text colors for the HTML report: green if the ratio increased versus
+# the previous (older) date, red otherwise, black for the oldest column
+# (which has no older date to compare against and is always 1.0).
+COLOR_INCREASE = "#1e7e34"
+COLOR_DECREASE = "#c0392b"
+COLOR_NEUTRAL = "#000000"
+
+HTML_STYLE = """
+body { font-family: Arial, Helvetica, sans-serif; font-size: 18px; }
+table { border-collapse: collapse; margin-top: 0.5em; }
+th, td { border: 1px solid #bbb; padding: 6px 12px; text-align: center; }
+th { background-color: #f0f0f0; }
+td:nth-child(2) { text-align: left; }
+"""
+
+
+def ratio_cell(values: list, i: int):
+    """Cell formatter for the ratio table: green/red depending on whether
+    the ratio increased or decreased versus the next (older) date column.
+    The oldest column (no next value to compare against) is left black."""
+    value = values[i]
+    if pd.isna(value):
+        return "", COLOR_NEUTRAL
+    text = f"{value:.3f}"
+    next_value = values[i + 1] if i + 1 < len(values) else None
+    if i == len(values) - 1 or next_value is None or pd.isna(next_value):
+        color = COLOR_NEUTRAL
+    elif value > next_value:
+        color = COLOR_INCREASE
+    else:
+        color = COLOR_DECREASE
+    return text, color
+
+
+def rate_cell(values: list, i: int):
+    """Cell formatter for the annualized-return table: a signed percentage
+    colored green/red by its own sign, or a dash where there's no rate
+    (the 0.00/today column, which has no holding period to annualize)."""
+    value = values[i]
+    if value is None or pd.isna(value):
+        return "-", COLOR_NEUTRAL
+    color = COLOR_INCREASE if value > 0 else COLOR_DECREASE if value < 0 else COLOR_NEUTRAL
+    return f"{value:+.1f}%", color
+
+
+def render_html_table(df: pd.DataFrame, id_columns: list, value_headers: list,
+                       cell_fn) -> str:
+    """Build an HTML table for `df` with a spanning "years ago" header row
+    above `value_headers`. `cell_fn(values, i)` formats each value column,
+    returning (text, color) for the i-th value in that row."""
+    lines = ["<table>", "  <thead>", "    <tr>",
+             f'      <th colspan="{len(id_columns)}"></th>',
+             f'      <th colspan="{len(value_headers)}">years ago</th>',
+             "    </tr>", "    <tr>"]
+    for col in id_columns + value_headers:
+        lines.append(f"      <th>{html.escape(col)}</th>")
+    lines += ["    </tr>", "  </thead>", "  <tbody>"]
+
+    for _, row in df.iterrows():
+        lines.append("    <tr>")
+        for col in id_columns:
+            lines.append(f"      <td>{html.escape(str(row[col]))}</td>")
+
+        values = [row[h] for h in value_headers]
+        for i in range(len(values)):
+            text, color = cell_fn(values, i)
+            lines.append(f'      <td style="color:{color}">{text}</td>')
+        lines.append("    </tr>")
+
+    lines += ["  </tbody>", "</table>"]
+    return "\n".join(lines)
+
+
+def init_db(conn: sqlite3.Connection):
+    """Create the price cache tables if they don't already exist."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS prices (
+            ticker TEXT,
+            date TEXT,
+            high REAL,
+            low REAL,
+            is_definitive INTEGER,
+            PRIMARY KEY (ticker, date)
+        )
+    """)
+    # Tracks the [range_start, range_end) actually requested from Yahoo for
+    # each ticker so far - not just the min/max of returned rows, since a
+    # requested end date can fall on a weekend/holiday or in the future
+    # (this script always requests a bit past today) and would then never
+    # be matched by any real trading day in `prices`.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fetch_status (
+            ticker TEXT PRIMARY KEY,
+            range_start TEXT,
+            range_end TEXT
+        )
+    """)
+    conn.commit()
+
+
+def get_fetch_status(conn: sqlite3.Connection, ticker: str):
+    """Return the [range_start, range_end) already requested from Yahoo
+    for `ticker`, or (None, None) if nothing's been fetched yet."""
+    row = conn.execute(
+        "SELECT range_start, range_end FROM fetch_status WHERE ticker = ?",
+        (ticker,)).fetchone()
+    return row if row else (None, None)
+
+
+def update_fetch_status(conn: sqlite3.Connection, ticker: str, start: str, end: str):
+    """Record that [start, end) has been requested for `ticker`, merging
+    with whatever was already covered so the tracked range only grows."""
+    old_start, old_end = get_fetch_status(conn, ticker)
+    new_start = min(start, old_start) if old_start else start
+    new_end = max(end, old_end) if old_end else end
+    conn.execute(
+        "INSERT OR REPLACE INTO fetch_status (ticker, range_start, range_end) "
+        "VALUES (?, ?, ?)", (ticker, new_start, new_end))
+    conn.commit()
+
+
+def has_stale_row(conn: sqlite3.Connection, ticker: str, today_str: str) -> bool:
+    """True if `ticker` has a provisional row for a date before today -
+    left over from a previous day's run, needing a refresh to pick up its
+    now-final High/Low."""
+    row = conn.execute(
+        "SELECT 1 FROM prices WHERE ticker = ? AND is_definitive = 0 "
+        "AND date < ? LIMIT 1", (ticker, today_str)).fetchone()
+    return row is not None
+
+
+def load_mid_series_from_cache(conn: sqlite3.Connection, ticker: str,
+                                start: str, end: str):
+    """Build the same (High+Low)/2 Series shape as fetch_mid_series, but
+    read from the local cache instead of the network."""
+    rows = conn.execute(
+        "SELECT date, high, low FROM prices WHERE ticker = ? "
+        "AND date >= ? AND date < ? ORDER BY date",
+        (ticker, start, end)).fetchall()
+    if not rows:
+        return None
+    dates = pd.to_datetime([r[0] for r in rows])
+    mids = [(r[1] + r[2]) / 2 for r in rows]
+    return pd.Series(mids, index=dates)
+
+
+def store_prices(conn: sqlite3.Connection, ticker: str, data: pd.DataFrame,
+                  today_str: str):
+    """Upsert every row of a freshly downloaded OHLC DataFrame into the
+    cache. Today's row is stored provisional (is_definitive=0); every
+    other (closed) day is stored definitive (is_definitive=1)."""
+    rows = [
+        (ticker, date.strftime("%Y-%m-%d"), float(row["High"]), float(row["Low"]),
+         0 if date.strftime("%Y-%m-%d") == today_str else 1)
+        for date, row in data.iterrows()
+    ]
+    conn.executemany(
+        "INSERT OR REPLACE INTO prices (ticker, date, high, low, is_definitive) "
+        "VALUES (?, ?, ?, ?, ?)", rows)
+    conn.commit()
+
+
+def fetch_mid_series(conn: sqlite3.Connection, ticker: str, start: str,
+                      end: str, today_str: str):
+    """Return a Series of mid prices (average of High and Low) indexed by
+    date for `ticker` over [start, end), or None if nothing is available.
+
+    Serves from the local SQLite cache when it already covers the
+    requested range and has no stale (pre-today, still-provisional) rows;
+    otherwise downloads from Yahoo Finance and caches the result."""
+    fetched_start, fetched_end = get_fetch_status(conn, ticker)
+    range_covered = (fetched_start is not None and fetched_start <= start
+                      and fetched_end >= end)
+    if range_covered and not has_stale_row(conn, ticker, today_str):
+        return load_mid_series_from_cache(conn, ticker, start, end)
+
+    data = yf.download(ticker, start=start, end=end,
+                        progress=False, auto_adjust=False)
+    if data.empty:
+        return None
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
+    store_prices(conn, ticker, data, today_str)
+    update_fetch_status(conn, ticker, start, end)
+    return load_mid_series_from_cache(conn, ticker, start, end)
+
+
+def mid_on_or_after(mid_series, target_date: datetime):
+    """Return the mid price on `target_date`, or the next available trading
+    day within MAX_FORWARD_FILL_DAYS. Returns None if nothing is found."""
+    if mid_series is None:
+        return None
+    for delta in range(MAX_FORWARD_FILL_DAYS + 1):
+        ts = pd.Timestamp(target_date + timedelta(days=delta))
+        if ts in mid_series.index:
+            return float(mid_series.loc[ts])
+    return None
+
+
+def mid_on_or_before(mid_series, target_date: datetime):
+    """Return the mid price on `target_date`, or the most recent prior
+    trading day within MAX_BACKWARD_FILL_DAYS. Returns None if nothing is
+    found - used for the anchor date, which can't be forward-filled since
+    that would mean looking into the future."""
+    if mid_series is None:
+        return None
+    for delta in range(MAX_BACKWARD_FILL_DAYS + 1):
+        ts = pd.Timestamp(target_date - timedelta(days=delta))
+        if ts in mid_series.index:
+            return float(mid_series.loc[ts])
+    return None
+
+
+if __name__ == "__main__":
+    anchor = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    target_date = anchor.strftime("%Y-%m-%d")
+
+    # Nominal lookback dates, shared across all tickers.
+    lookback_dates = {
+        months: anchor - timedelta(days=round(months * DAYS_PER_MONTH))
+        for months in LOOKBACK_MONTHS
+    }
+    # Column headers express years ago (0.00, 0.25, 0.50, 1.00, 2.00, 3.00).
+    years_ago_headers = {0: f"{0:.2f}"}
+    years_ago_headers.update({
+        months: f"{months / 12:.2f}" for months in LOOKBACK_MONTHS
+    })
+
+    history_start = (min(lookback_dates.values())
+                      - timedelta(days=MAX_FORWARD_FILL_DAYS)).strftime("%Y-%m-%d")
+    history_end = (anchor
+                   + timedelta(days=MAX_FORWARD_FILL_DAYS + 1)).strftime("%Y-%m-%d")
+
+    months_list = [0] + LOOKBACK_MONTHS
+
+    conn = sqlite3.connect(CACHE_DB_PATH)
+    init_db(conn)
+
+    results = []
+    rate_results = []
+    for isin, name in NAMES.items():
+        ticker = TICKERS[isin]
+        print(f"{isin} - {name} ({ticker})")
+
+        mid_series = fetch_mid_series(conn, ticker, history_start, history_end,
+                                       target_date)
+
+        raw = {0: mid_on_or_before(mid_series, anchor)}
+        for months, date in lookback_dates.items():
+            raw[months] = mid_on_or_after(mid_series, date)
+
+        # Normalize every value against the oldest lookback mid, so that
+        # column reads 1.0 for every row and the others show growth
+        # relative to the start of the window (a rebased index).
+        oldest_months = max(LOOKBACK_MONTHS)
+        reference_value = raw[oldest_months]
+        row = {"isin": isin, "name": name, "ticker": ticker}
+        for months, value in raw.items():
+            row[years_ago_headers[months]] = (
+                round(value / reference_value, 3)
+                if value is not None and reference_value else None)
+        results.append(row)
+
+        # Annualized return from each lookback date to today:
+        # (today / then) ** (1 / years_ago) - 1. This is the standard
+        # trailing-return reading ("if held from then to now, what
+        # annualized return would that be"), so every column shares the
+        # same endpoint (today) rather than comparing to its neighbor.
+        today_value = raw[0]
+        rate_row = {"isin": isin, "name": name, "ticker": ticker}
+        for months in months_list:
+            if months == 0:
+                rate = None
+            else:
+                older = raw[months]
+                years_ago = months / 12
+                rate = (round(((today_value / older) ** (1 / years_ago) - 1) * 100, 1)
+                        if today_value is not None and older else None)
+            rate_row[years_ago_headers[months]] = rate
+        rate_results.append(rate_row)
+
+    conn.close()
+
+    df = pd.DataFrame(results)
+    df_rates = pd.DataFrame(rate_results)
+    print(f"\nToday's date is: {target_date}")
+    print(f"=== Summary (mid prices, normalized to {oldest_months / 12:.2f} "
+          "years ago) ===")
+    print(df.to_string(index=False))
+
+    df.to_csv("etf_values.csv", index=False)
+
+    id_columns = ["isin", "name", "ticker"]
+    value_headers = [years_ago_headers[months]
+                      for months in [0] + LOOKBACK_MONTHS]
+
+    with open("etf_values.html", "w", encoding="utf-8") as f:
+        f.write("<html><head><meta charset=\"utf-8\">"
+                f"<title>ETF mid prices - {target_date}</title>"
+                f"<style>{HTML_STYLE}</style></head><body>\n")
+        f.write(f"<p>Today's date is: {target_date}</p>\n")
+        f.write(render_html_table(df, id_columns, value_headers, ratio_cell))
+        f.write("\n<h2>Annualized return to today</h2>\n")
+        f.write(render_html_table(df_rates, id_columns, value_headers, rate_cell))
+        f.write("\n</body></html>\n")
