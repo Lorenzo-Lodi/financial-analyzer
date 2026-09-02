@@ -71,7 +71,7 @@ import re
 import sqlite3
 import yfinance as yf
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # ISIN -> Yahoo ticker symbol.
 TICKERS = {
@@ -424,10 +424,21 @@ def mid_on_or_before(mid_series, target_date: datetime):
 
 if __name__ == "__main__":
 
-    now = datetime.now()
-    target_date_detailed: str = now.strftime("%Y-%m-%d %H:%M:%S.") + f"{now.microsecond // 1000:03d}"
-    anchor = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    # UTC throughout - both the anchor date used for price fetching/caching
+    # and the displayed "Last update" timestamp derive from this single
+    # `now`, so they can never disagree. This also matches the environment
+    # that actually matters: the scheduled GitHub Actions run (run.yml) is
+    # cron-scheduled in UTC on a UTC-clocked runner, so there's no local
+    # timezone to reconcile with there.
+    now = datetime.now(timezone.utc)
+    # Naive (tzinfo stripped) - anchor is compared against/combined with the
+    # naive dates used throughout the fetching/caching pipeline (the SQLite
+    # cache's plain "YYYY-MM-DD" strings, yfinance/pandas' naive DatetimeIndex),
+    # so it has to stay naive too; only its calendar day is UTC-based now.
+    anchor = now.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
     target_date: str = anchor.strftime("%Y-%m-%d")
+    target_date_detailed: str = (
+        now.strftime("%Y-%m-%d %H:%M:%S.") + f"{now.microsecond // 1000:03d} UTC")
 
     # Nominal lookback dates, shared across all tickers.
     lookback_dates = {
@@ -504,7 +515,7 @@ if __name__ == "__main__":
 
     df = pd.DataFrame(results)
     df_rates = pd.DataFrame(rate_results)
-    print(f"\nToday's date is: {target_date_detailed}")
+    print(f"\nLast update: {target_date_detailed}")
     print(f"=== Summary (mid prices, normalized to {oldest_months / 12:.2f} "
           "years ago) ===")
     print(df.to_string(index=False))
@@ -526,7 +537,7 @@ if __name__ == "__main__":
                 f"<title>ETFs - {target_date}</title>"
                 f"<link rel=\"icon\" href=\"{FAVICON_HREF}\">"
                 f"<style>{HTML_STYLE}</style></head><body>\n")
-        f.write(f"<p>Today's date is: {target_date_detailed}</p>\n")
+        f.write(f"<p>Last update: {target_date_detailed}</p>\n")
         f.write(f"\n<h2>Price ratios (normalized to {oldest_months / 12:.2f} "
                 "years ago)</h2>\n")
         f.write('<p style="color:#666; font-style:italic; max-width:700px;">'
