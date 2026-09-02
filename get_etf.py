@@ -65,6 +65,7 @@ marked definitive and never re-fetched again.
 Install dependency first:
     pip install yfinance --break-system-packages   # (or just `pip install yfinance`)
 """
+
 import base64
 import html
 import re
@@ -127,24 +128,24 @@ FUND_SIZE = {
 
 INDEX_DESCRIPTION = {
     "IE0032077012": "Tracks the Nasdaq-100 Index, the 100 largest "
-                     "non-financial companies listed on Nasdaq.",
+    "non-financial companies listed on Nasdaq.",
     "IE00B5KQNG97": "Tracks the S&P 500 Index, the 500 largest publicly "
-                     "traded US companies by market value.",
+    "traded US companies by market value.",
     "IE00B53QDK08": "Tracks the MSCI Japan Index, covering large- and "
-                     "mid-cap Japanese stocks.",
+    "mid-cap Japanese stocks.",
     "DE000A0F5UJ7": "Tracks the STOXX Europe 600 Banks Index, major bank "
-                     "stocks from the pan-European STOXX 600.",
+    "stocks from the pan-European STOXX 600.",
     "IE00B3RBWM25": "Tracks the FTSE All-World Index, large- and mid-cap "
-                     "stocks across developed and emerging markets "
-                     "worldwide.",
+    "stocks across developed and emerging markets "
+    "worldwide.",
     "IE00BKM4GZ66": "Tracks the MSCI Emerging Markets IMI Index, large-, "
-                     "mid-, and small-cap stocks across emerging markets.",
+    "mid-, and small-cap stocks across emerging markets.",
     "IE00B4K48X80": "Tracks the MSCI Europe Index, large- and mid-cap "
-                     "stocks from developed European countries.",
+    "stocks from developed European countries.",
     "LU1681047236": "Tracks the EURO STOXX 50 Index, the 50 largest "
-                     "blue-chip companies in the eurozone.",
+    "blue-chip companies in the eurozone.",
     "JE00B1VS3770": "Physically-backed ETC holding allocated gold bullion, "
-                     "tracking the spot price of gold in USD.",
+    "tracking the spot price of gold in USD.",
 }
 
 DAYS_PER_MONTH = 30.42
@@ -176,10 +177,13 @@ td:nth-child(2) { text-align: left; }
 
 # Browser-tab icon, embedded as a base64 SVG data URI so the report stays a
 # single self-contained HTML file with no extra .ico asset to ship alongside it.
-_FAVICON_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
-                '<text y="0.85em" font-size="90">\U0001F4C8</text></svg>')
+_FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+    '<text y="0.85em" font-size="90">\U0001f4c8</text></svg>'
+)
 FAVICON_HREF = "data:image/svg+xml;base64," + base64.b64encode(
-    _FAVICON_SVG.encode("utf-8")).decode("ascii")
+    _FAVICON_SVG.encode("utf-8")
+).decode("ascii")
 
 
 def ratio_cell(values: list, i: int):
@@ -207,7 +211,9 @@ def rate_cell(values: list, i: int):
     value = values[i]
     if value is None or pd.isna(value):
         return "-", COLOR_NEUTRAL
-    color = COLOR_INCREASE if value > 0 else COLOR_DECREASE if value < 0 else COLOR_NEUTRAL
+    color = (
+        COLOR_INCREASE if value > 0 else COLOR_DECREASE if value < 0 else COLOR_NEUTRAL
+    )
     return f"{value:+.1f}%", color
 
 
@@ -218,9 +224,11 @@ def highlight_terms(text: str, terms: list, css_class: str) -> str:
     for term in terms:
         match = re.search(rf"\b{re.escape(term)}\b", text)
         if match:
-            return (text[:match.start()]
-                     + f'<span class="{css_class}">{match.group()}</span>'
-                     + text[match.end():])
+            return (
+                text[: match.start()]
+                + f'<span class="{css_class}">{match.group()}</span>'
+                + text[match.end() :]
+            )
     return text
 
 
@@ -235,9 +243,15 @@ def render_name(name: str) -> str:
     return text
 
 
-def render_html_table(df: pd.DataFrame, id_columns: list, value_headers: list,
-                       date_headers: list, cell_fn, tooltips: dict = None,
-                       tooltip_column: str = "name") -> str:
+def render_html_table(
+    df: pd.DataFrame,
+    id_columns: list,
+    value_headers: list,
+    date_headers: list,
+    cell_fn,
+    tooltips: dict = None,
+    tooltip_column: str = "name",
+) -> str:
     """Build an HTML table for `df` with a spanning "years ago" header row
     above `value_headers`, followed by a `date_headers` sub-row (the nominal
     lookback date for each value column). `cell_fn(values, i)` formats each
@@ -246,10 +260,15 @@ def render_html_table(df: pd.DataFrame, id_columns: list, value_headers: list,
     If `tooltips` is given (ISIN -> tooltip text), it's attached as a
     `title` attribute to each row's `tooltip_column` cell, shown by the
     browser on hover."""
-    lines = ["<table>", "  <thead>", "    <tr>",
-             f'      <th colspan="{len(id_columns)}"></th>',
-             f'      <th colspan="{len(value_headers)}">years ago</th>',
-             "    </tr>", "    <tr>"]
+    lines = [
+        "<table>",
+        "  <thead>",
+        "    <tr>",
+        f'      <th colspan="{len(id_columns)}"></th>',
+        f'      <th colspan="{len(value_headers)}">years ago</th>',
+        "    </tr>",
+        "    <tr>",
+    ]
     for col in id_columns + value_headers:
         lines.append(f"      <th>{html.escape(col)}</th>")
     lines.append("    </tr>")
@@ -266,10 +285,17 @@ def render_html_table(df: pd.DataFrame, id_columns: list, value_headers: list,
     for _, row in df.iterrows():
         lines.append("    <tr>")
         for col in id_columns:
-            tooltip = tooltips.get(row["isin"]) if tooltips and col == tooltip_column else None
+            tooltip = (
+                tooltips.get(row["isin"])
+                if tooltips and col == tooltip_column
+                else None
+            )
             title_attr = f' title="{html.escape(tooltip)}"' if tooltip else ""
-            cell_html = (render_name(str(row[col])) if col == "name"
-                         else html.escape(str(row[col])))
+            cell_html = (
+                render_name(str(row[col]))
+                if col == "name"
+                else html.escape(str(row[col]))
+            )
             lines.append(f"      <td{title_attr}>{cell_html}</td>")
 
         values = [row[h] for h in value_headers]
@@ -313,8 +339,8 @@ def get_fetch_status(conn: sqlite3.Connection, ticker: str):
     """Return the [range_start, range_end) already requested from Yahoo
     for `ticker`, or (None, None) if nothing's been fetched yet."""
     row = conn.execute(
-        "SELECT range_start, range_end FROM fetch_status WHERE ticker = ?",
-        (ticker,)).fetchone()
+        "SELECT range_start, range_end FROM fetch_status WHERE ticker = ?", (ticker,)
+    ).fetchone()
     return row if row else (None, None)
 
 
@@ -326,7 +352,9 @@ def update_fetch_status(conn: sqlite3.Connection, ticker: str, start: str, end: 
     new_end = max(end, old_end) if old_end else end
     conn.execute(
         "INSERT OR REPLACE INTO fetch_status (ticker, range_start, range_end) "
-        "VALUES (?, ?, ?)", (ticker, new_start, new_end))
+        "VALUES (?, ?, ?)",
+        (ticker, new_start, new_end),
+    )
     conn.commit()
 
 
@@ -336,18 +364,22 @@ def has_stale_row(conn: sqlite3.Connection, ticker: str, today_str: str) -> bool
     now-final High/Low."""
     row = conn.execute(
         "SELECT 1 FROM prices WHERE ticker = ? AND is_definitive = 0 "
-        "AND date < ? LIMIT 1", (ticker, today_str)).fetchone()
+        "AND date < ? LIMIT 1",
+        (ticker, today_str),
+    ).fetchone()
     return row is not None
 
 
-def load_mid_series_from_cache(conn: sqlite3.Connection, ticker: str,
-                                start: str, end: str):
+def load_mid_series_from_cache(
+    conn: sqlite3.Connection, ticker: str, start: str, end: str
+):
     """Build the same (High+Low)/2 Series shape as fetch_mid_series, but
     read from the local cache instead of the network."""
     rows = conn.execute(
         "SELECT date, high, low FROM prices WHERE ticker = ? "
         "AND date >= ? AND date < ? ORDER BY date",
-        (ticker, start, end)).fetchall()
+        (ticker, start, end),
+    ).fetchall()
     if not rows:
         return None
     dates = pd.to_datetime([r[0] for r in rows])
@@ -355,24 +387,33 @@ def load_mid_series_from_cache(conn: sqlite3.Connection, ticker: str,
     return pd.Series(mids, index=dates)
 
 
-def store_prices(conn: sqlite3.Connection, ticker: str, data: pd.DataFrame,
-                  today_str: str):
+def store_prices(
+    conn: sqlite3.Connection, ticker: str, data: pd.DataFrame, today_str: str
+):
     """Upsert every row of a freshly downloaded OHLC DataFrame into the
     cache. Today's row is stored provisional (is_definitive=0); every
     other (closed) day is stored definitive (is_definitive=1)."""
     rows = [
-        (ticker, date.strftime("%Y-%m-%d"), float(row["High"]), float(row["Low"]),
-         0 if date.strftime("%Y-%m-%d") == today_str else 1)
+        (
+            ticker,
+            date.strftime("%Y-%m-%d"),
+            float(row["High"]),
+            float(row["Low"]),
+            0 if date.strftime("%Y-%m-%d") == today_str else 1,
+        )
         for date, row in data.iterrows()
     ]
     conn.executemany(
         "INSERT OR REPLACE INTO prices (ticker, date, high, low, is_definitive) "
-        "VALUES (?, ?, ?, ?, ?)", rows)
+        "VALUES (?, ?, ?, ?, ?)",
+        rows,
+    )
     conn.commit()
 
 
-def fetch_mid_series(conn: sqlite3.Connection, ticker: str, start: str,
-                      end: str, today_str: str):
+def fetch_mid_series(
+    conn: sqlite3.Connection, ticker: str, start: str, end: str, today_str: str
+):
     """Return a Series of mid prices (average of High and Low) indexed by
     date for `ticker` over [start, end), or None if nothing is available.
 
@@ -380,13 +421,13 @@ def fetch_mid_series(conn: sqlite3.Connection, ticker: str, start: str,
     requested range and has no stale (pre-today, still-provisional) rows;
     otherwise downloads from Yahoo Finance and caches the result."""
     fetched_start, fetched_end = get_fetch_status(conn, ticker)
-    range_covered = (fetched_start is not None and fetched_start <= start
-                      and fetched_end >= end)
+    range_covered = (
+        fetched_start is not None and fetched_start <= start and fetched_end >= end
+    )
     if range_covered and not has_stale_row(conn, ticker, today_str):
         return load_mid_series_from_cache(conn, ticker, start, end)
 
-    data = yf.download(ticker, start=start, end=end,
-                        progress=False, auto_adjust=False)
+    data = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=False)
     if data.empty:
         return None
     if isinstance(data.columns, pd.MultiIndex):
@@ -438,7 +479,8 @@ if __name__ == "__main__":
     anchor = now.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
     target_date: str = anchor.strftime("%Y-%m-%d")
     target_date_detailed: str = (
-        now.strftime("%Y-%m-%d %H:%M:%S.") + f"{now.microsecond // 1000:03d} UTC")
+        now.strftime("%Y-%m-%d %H:%M:%S.") + f"{now.microsecond // 1000:03d} UTC"
+    )
 
     # Nominal lookback dates, shared across all tickers.
     lookback_dates = {
@@ -447,21 +489,23 @@ if __name__ == "__main__":
     }
     # Column headers express years ago (0.00, 0.25, 0.50, 1.00, 2.00, 3.00).
     years_ago_headers = {0: f"{0:.2f}"}
-    years_ago_headers.update({
-        months: f"{months / 12:.2f}" for months in LOOKBACK_MONTHS
-    })
+    years_ago_headers.update(
+        {months: f"{months / 12:.2f}" for months in LOOKBACK_MONTHS}
+    )
     # Nominal lookback date (YYYY-MM) shown as a sub-header for each
     # years-ago column - same nominal date for every ticker, distinct from
     # the actual resolved trading day used per ticker.
     date_headers = {0: anchor.strftime("%Y-%m")}
-    date_headers.update({
-        months: date.strftime("%Y-%m") for months, date in lookback_dates.items()
-    })
+    date_headers.update(
+        {months: date.strftime("%Y-%m") for months, date in lookback_dates.items()}
+    )
 
-    history_start = (min(lookback_dates.values())
-                      - timedelta(days=MAX_FORWARD_FILL_DAYS)).strftime("%Y-%m-%d")
-    history_end = (anchor
-                   + timedelta(days=MAX_FORWARD_FILL_DAYS + 1)).strftime("%Y-%m-%d")
+    history_start = (
+        min(lookback_dates.values()) - timedelta(days=MAX_FORWARD_FILL_DAYS)
+    ).strftime("%Y-%m-%d")
+    history_end = (anchor + timedelta(days=MAX_FORWARD_FILL_DAYS + 1)).strftime(
+        "%Y-%m-%d"
+    )
 
     months_list = [0] + LOOKBACK_MONTHS
 
@@ -474,8 +518,9 @@ if __name__ == "__main__":
         ticker = TICKERS[isin]
         print(f"{isin} - {name} ({ticker})")
 
-        mid_series = fetch_mid_series(conn, ticker, history_start, history_end,
-                                       target_date)
+        mid_series = fetch_mid_series(
+            conn, ticker, history_start, history_end, target_date
+        )
 
         raw = {0: mid_on_or_before(mid_series, anchor)}
         for months, date in lookback_dates.items():
@@ -484,13 +529,15 @@ if __name__ == "__main__":
         # Normalize every value against the oldest lookback mid, so that
         # column reads 1.0 for every row and the others show growth
         # relative to the start of the window (a rebased index).
-        oldest_months = max(LOOKBACK_MONTHS)
-        reference_value = raw[oldest_months]
+        oldest_month: float = max(LOOKBACK_MONTHS)
+        reference_value = raw[oldest_month]
         row = {"isin": isin, "name": name, "ticker": ticker}
         for months, value in raw.items():
             row[years_ago_headers[months]] = (
                 round(value / reference_value, 3)
-                if value is not None and reference_value else None)
+                if value is not None and reference_value
+                else None
+            )
         results.append(row)
 
         # Annualized return from each lookback date to today:
@@ -506,8 +553,11 @@ if __name__ == "__main__":
             else:
                 older = raw[months]
                 years_ago = months / 12
-                rate = (round(((today_value / older) ** (1 / years_ago) - 1) * 100, 1)
-                        if today_value is not None and older else None)
+                rate = (
+                    round(((today_value / older) ** (1 / years_ago) - 1) * 100, 1)
+                    if today_value is not None and older
+                    else None
+                )
             rate_row[years_ago_headers[months]] = rate
         rate_results.append(rate_row)
 
@@ -516,44 +566,66 @@ if __name__ == "__main__":
     df = pd.DataFrame(results)
     df_rates = pd.DataFrame(rate_results)
     print(f"\nLast update: {target_date_detailed}")
-    print(f"=== Summary (mid prices, normalized to {oldest_months / 12:.2f} "
-          "years ago) ===")
+    print(
+        f"=== Summary (mid prices, normalized to {round(oldest_month/12,2):g} "
+        "years ago) ==="
+    )
     print(df.to_string(index=False))
 
     df.to_csv("etf_values.csv", index=False)
 
     id_columns = ["isin", "name", "ticker"]
-    value_headers = [years_ago_headers[months]
-                      for months in [0] + LOOKBACK_MONTHS]
-    date_header_list = [date_headers[months]
-                         for months in [0] + LOOKBACK_MONTHS]
+    value_headers = [years_ago_headers[months] for months in [0] + LOOKBACK_MONTHS]
+    date_header_list = [date_headers[months] for months in [0] + LOOKBACK_MONTHS]
     tooltips = {
         isin: f"Size: {FUND_SIZE[isin]}\nTracks: {INDEX_DESCRIPTION[isin]}"
         for isin in NAMES
     }
 
     with open("etf_values.html", "w", encoding="utf-8") as f:
-        f.write("<html><head><meta charset=\"utf-8\">"
-                f"<title>ETFs - {target_date}</title>"
-                f"<link rel=\"icon\" href=\"{FAVICON_HREF}\">"
-                f"<style>{HTML_STYLE}</style></head><body>\n")
+        f.write(
+            '<html><head><meta charset="utf-8">'
+            f"<title>ETFs - {target_date}</title>"
+            f'<link rel="icon" href="{FAVICON_HREF}">'
+            f"<style>{HTML_STYLE}</style></head><body>\n"
+        )
         f.write(f"<p>Last update: {target_date_detailed}</p>\n")
-        f.write(f"\n<h2>Price ratios (normalized to {oldest_months / 12:.2f} "
-                "years ago)</h2>\n")
-        f.write('<p style="color:#666; font-style:italic; max-width:700px;">'
-                "Each value is the price ratio: the fund's price on that "
-                f"date divided by its price {oldest_months / 12:.2f} years "
-                "ago. Each cell is colored green or red depending on whether "
-                "the price rose or fell compared to the previous point in the row.</p>\n")
-        f.write(render_html_table(df, id_columns, value_headers,
-                                   date_header_list, ratio_cell,
-                                   tooltips=tooltips))
+        f.write(
+            f"\n<h2>Price ratios (normalized to {round(oldest_month/12,2):g} "
+            "years ago)</h2>\n"
+        )
+        f.write(
+            '<p style="color:#666; font-style:italic; max-width:1000px;">'
+            "Each value is the price ratio: the fund's price on that "
+            f"date divided by its price {round(oldest_month/12,2):g} years "
+            "ago. Each cell is colored green or red depending on whether "
+            "the price rose or fell compared to the previous point in the row.</p>\n"
+        )
+        f.write(
+            render_html_table(
+                df,
+                id_columns,
+                value_headers,
+                date_header_list,
+                ratio_cell,
+                tooltips=tooltips,
+            )
+        )
         f.write("\n<h2>Annualized returns (to present day)</h2>\n")
-        f.write('<p style="color:#666; font-style:italic; max-width:700px;">'
-                "Each value is the annualized return: the compounded yearly "
-                "growth rate that the fund would have provided if bought at "
-                "that point in the past and held until today.</p>\n")
-        f.write(render_html_table(df_rates, id_columns, value_headers,
-                                   date_header_list, rate_cell,
-                                   tooltips=tooltips))
+        f.write(
+            '<p style="color:#666; font-style:italic; max-width:1000px;">'
+            "Each value is the annualized return: the compounded yearly "
+            "growth rate that the fund would have provided if bought at "
+            "that point in the past and held until today.</p>\n"
+        )
+        f.write(
+            render_html_table(
+                df_rates,
+                id_columns,
+                value_headers,
+                date_header_list,
+                rate_cell,
+                tooltips=tooltips,
+            )
+        )
         f.write("\n</body></html>\n")
