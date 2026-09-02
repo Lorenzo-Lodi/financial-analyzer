@@ -67,6 +67,7 @@ Install dependency first:
 """
 import base64
 import html
+import re
 import sqlite3
 import yfinance as yf
 import pandas as pd
@@ -96,6 +97,15 @@ NAMES = {
     "LU1681047236": "Amundi Core EURO STOXX 50 UCITS ETF EUR (Acc)",
     "JE00B1VS3770": "WisdomTree Physical Gold (ETC)",
 }
+
+# Terms highlighted with a colored <span> inside the "name" cell of the HTML
+# report (see highlight_terms/render_name below). Manually maintained, like
+# NAMES itself - add an entry here whenever a future ETF introduces a new
+# company/currency not already listed.
+COMPANIES = ["Invesco", "HSBC", "iShares", "Vanguard", "Amundi", "WisdomTree"]
+FUND_TYPES = ["UCITS ETF", "ETC"]
+CURRENCIES = ["USD", "EUR"]
+ACC_DIST_TERMS = ["Acc", "Dist"]
 
 # Fund size (AUM) and index description shown as a hover tooltip on the name
 # cell. Manually curated, like TICKERS/NAMES above - yfinance's .info does
@@ -158,6 +168,10 @@ th, td { border: 1px solid #bbb; padding: 6px 12px; text-align: center; }
 th { background-color: #f0f0f0; }
 th.date-row { font-weight: normal; font-size: 0.8em; color: #666; }
 td:nth-child(2) { text-align: left; }
+.company-name { color: #2979ff; }
+.fund-type    { color: #d500f9; }
+.currency     { color: #00bfa5; }
+.acc-dist     { color: #ff6d00; }
 """
 
 # Browser-tab icon, embedded as a base64 SVG data URI so the report stays a
@@ -197,6 +211,30 @@ def rate_cell(values: list, i: int):
     return f"{value:+.1f}%", color
 
 
+def highlight_terms(text: str, terms: list, css_class: str) -> str:
+    """Wrap the first whole-word/whole-phrase match from `terms` found in
+    `text` with a <span class="css_class">, leaving the rest untouched.
+    Word-boundary matching avoids false hits like "EUR" inside "EURO"."""
+    for term in terms:
+        match = re.search(rf"\b{re.escape(term)}\b", text)
+        if match:
+            return (text[:match.start()]
+                     + f'<span class="{css_class}">{match.group()}</span>'
+                     + text[match.end():])
+    return text
+
+
+def render_name(name: str) -> str:
+    """Build the HTML for the name cell: the plain name, HTML-escaped, with
+    company/type/currency/acc-dist terms wrapped in colored spans."""
+    text = html.escape(name)
+    text = highlight_terms(text, COMPANIES, "company-name")
+    text = highlight_terms(text, FUND_TYPES, "fund-type")
+    text = highlight_terms(text, CURRENCIES, "currency")
+    text = highlight_terms(text, ACC_DIST_TERMS, "acc-dist")
+    return text
+
+
 def render_html_table(df: pd.DataFrame, id_columns: list, value_headers: list,
                        date_headers: list, cell_fn, tooltips: dict = None,
                        tooltip_column: str = "name") -> str:
@@ -230,7 +268,9 @@ def render_html_table(df: pd.DataFrame, id_columns: list, value_headers: list,
         for col in id_columns:
             tooltip = tooltips.get(row["isin"]) if tooltips and col == tooltip_column else None
             title_attr = f' title="{html.escape(tooltip)}"' if tooltip else ""
-            lines.append(f"      <td{title_attr}>{html.escape(str(row[col]))}</td>")
+            cell_html = (render_name(str(row[col])) if col == "name"
+                         else html.escape(str(row[col])))
+            lines.append(f"      <td{title_attr}>{cell_html}</td>")
 
         values = [row[h] for h in value_headers]
         for i in range(len(values)):
