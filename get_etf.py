@@ -487,11 +487,11 @@ if __name__ == "__main__":
         months: anchor - timedelta(days=round(months * DAYS_PER_MONTH))
         for months in LOOKBACK_MONTHS
     }
-    # Column headers express years ago (0.00, 0.25, 0.50, 1.00, 2.00, 3.00).
-    years_ago_headers = {0: f"{0:.2f}"}
-    years_ago_headers.update(
-        {months: f"{months / 12:.2f}" for months in LOOKBACK_MONTHS}
-    )
+    # Column headers express years ago (0, 0.25, 0.5, 1, 2, 3, 4, 5) - no
+    # trailing decimals for whole years, matching the reference-date text below.
+    years_ago_headers = {
+        months: f"{round(months / 12, 2):g}" for months in [0] + LOOKBACK_MONTHS
+    }
     # Nominal lookback date (YYYY-MM) shown as a sub-header for each
     # years-ago column - same nominal date for every ticker, distinct from
     # the actual resolved trading day used per ticker.
