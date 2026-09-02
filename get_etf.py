@@ -527,10 +527,21 @@ if __name__ == "__main__":
                 f"<link rel=\"icon\" href=\"{FAVICON_HREF}\">"
                 f"<style>{HTML_STYLE}</style></head><body>\n")
         f.write(f"<p>Today's date is: {target_date_detailed}</p>\n")
+        f.write(f"\n<h2>Price ratios (normalized to {oldest_months / 12:.2f} "
+                "years ago)</h2>\n")
+        f.write('<p style="color:#666; font-style:italic; max-width:700px;">'
+                "Each value is the price ratio: the fund's price on that "
+                f"date divided by its price {oldest_months / 12:.2f} years "
+                "ago. Each cell is colored green or red depending on whether "
+                "the price rose or fell compared to the previous point in the row.</p>\n")
         f.write(render_html_table(df, id_columns, value_headers,
                                    date_header_list, ratio_cell,
                                    tooltips=tooltips))
         f.write("\n<h2>Annualized returns (to present day)</h2>\n")
+        f.write('<p style="color:#666; font-style:italic; max-width:700px;">'
+                "Each value is the annualized return: the compounded yearly "
+                "growth rate that the fund would have provided if bought at "
+                "that point in the past and held until today.</p>\n")
         f.write(render_html_table(df_rates, id_columns, value_headers,
                                    date_header_list, rate_cell,
                                    tooltips=tooltips))
