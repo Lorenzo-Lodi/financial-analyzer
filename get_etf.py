@@ -65,6 +65,7 @@ marked definitive and never re-fetched again.
 Install dependency first:
     pip install yfinance --break-system-packages   # (or just `pip install yfinance`)
 """
+import base64
 import html
 import sqlite3
 import yfinance as yf
@@ -158,6 +159,13 @@ th { background-color: #f0f0f0; }
 th.date-row { font-weight: normal; font-size: 0.8em; color: #666; }
 td:nth-child(2) { text-align: left; }
 """
+
+# Browser-tab icon, embedded as a base64 SVG data URI so the report stays a
+# single self-contained HTML file with no extra .ico asset to ship alongside it.
+_FAVICON_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+                '<text y="0.85em" font-size="90">\U0001F4C8</text></svg>')
+FAVICON_HREF = "data:image/svg+xml;base64," + base64.b64encode(
+    _FAVICON_SVG.encode("utf-8")).decode("ascii")
 
 
 def ratio_cell(values: list, i: int):
@@ -476,6 +484,7 @@ if __name__ == "__main__":
     with open("etf_values.html", "w", encoding="utf-8") as f:
         f.write("<html><head><meta charset=\"utf-8\">"
                 f"<title>ETFs - {target_date}</title>"
+                f"<link rel=\"icon\" href=\"{FAVICON_HREF}\">"
                 f"<style>{HTML_STYLE}</style></head><body>\n")
         f.write(f"<p>Today's date is: {target_date_detailed}</p>\n")
         f.write(render_html_table(df, id_columns, value_headers,
