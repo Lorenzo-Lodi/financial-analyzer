@@ -70,9 +70,11 @@ import base64
 import html
 import re
 import sqlite3
+from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
+
 import yfinance as yf
 import pandas as pd
-from datetime import datetime, timedelta, timezone
 
 # ISIN -> Yahoo ticker symbol.
 TICKERS = {
@@ -186,7 +188,7 @@ FAVICON_HREF = "data:image/svg+xml;base64," + base64.b64encode(
 ).decode("ascii")
 
 
-def ratio_cell(values: list, i: int):
+def ratio_cell(values: list[float | None], i: int) -> tuple[str, str]:
     """Cell formatter for the ratio table: green/red depending on whether
     the ratio increased or decreased versus the next (older) date column.
     The oldest column (no next value to compare against) is left black."""
@@ -204,7 +206,7 @@ def ratio_cell(values: list, i: int):
     return text, color
 
 
-def rate_cell(values: list, i: int):
+def rate_cell(values: list[float | None], i: int) -> tuple[str, str]:
     """Cell formatter for the annualized-return table: a signed percentage
     colored green/red by its own sign, or a dash where there's no rate
     (the 0.00/today column, which has no holding period to annualize)."""
@@ -217,7 +219,7 @@ def rate_cell(values: list, i: int):
     return f"{value:+.1f}%", color
 
 
-def highlight_terms(text: str, terms: list, css_class: str) -> str:
+def highlight_terms(text: str, terms: list[str], css_class: str) -> str:
     """Wrap the first whole-word/whole-phrase match from `terms` found in
     `text` with a <span class="css_class">, leaving the rest untouched.
     Word-boundary matching avoids false hits like "EUR" inside "EURO"."""
@@ -245,11 +247,11 @@ def render_name(name: str) -> str:
 
 def render_html_table(
     df: pd.DataFrame,
-    id_columns: list,
-    value_headers: list,
-    date_headers: list,
-    cell_fn,
-    tooltips: dict = None,
+    id_columns: list[str],
+    value_headers: list[str],
+    date_headers: list[str],
+    cell_fn: Callable[[list[float | None], int], tuple[str, str]],
+    tooltips: dict[str, str] | None = None,
     tooltip_column: str = "name",
 ) -> str:
     """Build an HTML table for `df` with a spanning "years ago" header row
@@ -308,7 +310,7 @@ def render_html_table(
     return "\n".join(lines)
 
 
-def init_db(conn: sqlite3.Connection):
+def init_db(conn: sqlite3.Connection) -> None:
     """Create the price cache tables if they don't already exist."""
     conn.execute("""
         CREATE TABLE IF NOT EXISTS prices (
@@ -335,7 +337,9 @@ def init_db(conn: sqlite3.Connection):
     conn.commit()
 
 
-def get_fetch_status(conn: sqlite3.Connection, ticker: str):
+def get_fetch_status(
+    conn: sqlite3.Connection, ticker: str
+) -> tuple[str | None, str | None]:
     """Return the [range_start, range_end) already requested from Yahoo
     for `ticker`, or (None, None) if nothing's been fetched yet."""
     row = conn.execute(
@@ -344,7 +348,9 @@ def get_fetch_status(conn: sqlite3.Connection, ticker: str):
     return row if row else (None, None)
 
 
-def update_fetch_status(conn: sqlite3.Connection, ticker: str, start: str, end: str):
+def update_fetch_status(
+    conn: sqlite3.Connection, ticker: str, start: str, end: str
+) -> None:
     """Record that [start, end) has been requested for `ticker`, merging
     with whatever was already covered so the tracked range only grows."""
     old_start, old_end = get_fetch_status(conn, ticker)
@@ -372,7 +378,7 @@ def has_stale_row(conn: sqlite3.Connection, ticker: str, today_str: str) -> bool
 
 def load_mid_series_from_cache(
     conn: sqlite3.Connection, ticker: str, start: str, end: str
-):
+) -> pd.Series | None:
     """Build the same (High+Low)/2 Series shape as fetch_mid_series, but
     read from the local cache instead of the network."""
     rows = conn.execute(
@@ -389,7 +395,7 @@ def load_mid_series_from_cache(
 
 def store_prices(
     conn: sqlite3.Connection, ticker: str, data: pd.DataFrame, today_str: str
-):
+) -> None:
     """Upsert every row of a freshly downloaded OHLC DataFrame into the
     cache. Today's row is stored provisional (is_definitive=0); every
     other (closed) day is stored definitive (is_definitive=1)."""
@@ -413,7 +419,7 @@ def store_prices(
 
 def fetch_mid_series(
     conn: sqlite3.Connection, ticker: str, start: str, end: str, today_str: str
-):
+) -> pd.Series | None:
     """Return a Series of mid prices (average of High and Low) indexed by
     date for `ticker` over [start, end), or None if nothing is available.
 
@@ -437,7 +443,7 @@ def fetch_mid_series(
     return load_mid_series_from_cache(conn, ticker, start, end)
 
 
-def mid_on_or_after(mid_series, target_date: datetime):
+def mid_on_or_after(mid_series: pd.Series | None, target_date: datetime) -> float | None:
     """Return the mid price on `target_date`, or the next available trading
     day within MAX_FORWARD_FILL_DAYS. Returns None if nothing is found."""
     if mid_series is None:
@@ -449,7 +455,7 @@ def mid_on_or_after(mid_series, target_date: datetime):
     return None
 
 
-def mid_on_or_before(mid_series, target_date: datetime):
+def mid_on_or_before(mid_series: pd.Series | None, target_date: datetime) -> float | None:
     """Return the mid price on `target_date`, or the most recent prior
     trading day within MAX_BACKWARD_FILL_DAYS. Returns None if nothing is
     found - used for the anchor date, which can't be forward-filled since
