@@ -337,6 +337,26 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def delete_orphaned_provisional_rows(conn: sqlite3.Connection, today_str: str) -> int:
+    """Delete every provisional (is_definitive=0) row dated before today.
+
+    A provisional row is normally healed into a definitive one by the next
+    day's fetch re-downloading that date with its final High/Low. But if
+    Yahoo Finance stops returning that date at all - e.g. it briefly served
+    a same-day quote for a non-trading holiday, then dropped it from history
+    once the session closed with no actual trades - the row is never
+    revisited by store_prices and would otherwise stay provisional forever,
+    permanently flagging that ticker as stale on every future run. Once a
+    provisional row is in the past, it's already had its one chance to be
+    confirmed; if it wasn't, waiting longer won't help; only deleting it
+    clears the flag. Returns the number of rows deleted."""
+    cursor = conn.execute(
+        "DELETE FROM prices WHERE is_definitive = 0 AND date < ?", (today_str,)
+    )
+    conn.commit()
+    return cursor.rowcount
+
+
 def get_fetch_status(
     conn: sqlite3.Connection, ticker: str
 ) -> tuple[str | None, str | None]:
@@ -418,21 +438,30 @@ def store_prices(
 
 
 def fetch_mid_series(
-    conn: sqlite3.Connection, ticker: str, start: str, end: str, today_str: str
+    conn: sqlite3.Connection,
+    ticker: str,
+    start: str,
+    end: str,
+    today_str: str,
+    stats: dict[str, int],
 ) -> pd.Series | None:
     """Return a Series of mid prices (average of High and Low) indexed by
     date for `ticker` over [start, end), or None if nothing is available.
 
     Serves from the local SQLite cache when it already covers the
     requested range and has no stale (pre-today, still-provisional) rows;
-    otherwise downloads from Yahoo Finance and caches the result."""
+    otherwise downloads from Yahoo Finance and caches the result. `stats` is
+    incremented in place: stats["cached"] for a ticker fully served from the
+    local cache, stats["fetched"] for one requiring a fresh Yahoo download."""
     fetched_start, fetched_end = get_fetch_status(conn, ticker)
     range_covered = (
         fetched_start is not None and fetched_start <= start and fetched_end >= end
     )
     if range_covered and not has_stale_row(conn, ticker, today_str):
+        stats["cached"] += 1
         return load_mid_series_from_cache(conn, ticker, start, end)
 
+    stats["fetched"] += 1
     data = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=False)
     if data.empty:
         return None
@@ -517,7 +546,14 @@ if __name__ == "__main__":
 
     conn = sqlite3.connect(CACHE_DB_PATH)
     init_db(conn)
+    deleted_orphans = delete_orphaned_provisional_rows(conn, target_date)
+    if deleted_orphans:
+        print(
+            f"Cleaned up {deleted_orphans} orphaned provisional price row(s) "
+            "that Yahoo Finance never confirmed."
+        )
 
+    fetch_stats = {"fetched": 0, "cached": 0}
     results = []
     rate_results = []
     for isin, name in NAMES.items():
@@ -525,7 +561,7 @@ if __name__ == "__main__":
         print(f"{isin} - {name} ({ticker})")
 
         mid_series = fetch_mid_series(
-            conn, ticker, history_start, history_end, target_date
+            conn, ticker, history_start, history_end, target_date, fetch_stats
         )
 
         raw = {0: mid_on_or_before(mid_series, anchor)}
@@ -568,6 +604,12 @@ if __name__ == "__main__":
         rate_results.append(rate_row)
 
     conn.close()
+
+    print(
+        f"\nData source: {fetch_stats['fetched']} of {len(TICKERS)} ETFs fetched "
+        f"fresh from Yahoo Finance, {fetch_stats['cached']} served from the local "
+        f"cache ({CACHE_DB_PATH})."
+    )
 
     df = pd.DataFrame(results)
     df_rates = pd.DataFrame(rate_results)
