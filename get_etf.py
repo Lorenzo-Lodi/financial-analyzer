@@ -110,45 +110,112 @@ FUND_TYPES = ["UCITS ETF", "ETC"]
 CURRENCIES = ["USD", "EUR"]
 ACC_DIST_TERMS = ["Acc", "Dist"]
 
-# Fund size (AUM) and index description shown as a hover tooltip on the name
-# cell. Manually curated, like TICKERS/NAMES above - yfinance's .info does
-# not reliably expose this data for these European-listed UCITS ETFs
-# (totalAssets is missing for some tickers, longBusinessSummary/category are
-# unavailable for all of them). Approximate, researched as of 2026-08-31 -
-# worth re-checking periodically against issuer factsheets or justetf.com.
+# Fund reference data shown in the "Fund details" table (and, for FUND_SIZE/
+# INDEX_DESCRIPTION, also reused in the hover tooltip on the name cell).
+# Manually curated, like TICKERS/NAMES above. Source: onlyetf.com, Sep 2026 -
+# see FUND_DETAILS_SOURCE_NOTE below.
 FUND_SIZE = {
-    "IE0032077012": "$13.7B (Jul 2026)",
-    "IE00B5KQNG97": "$10.1B (Jul 2026)",
-    "IE00B53QDK08": "$1.8B (Jul 2026)",
-    "DE000A0F5UJ7": "$4.2B (Jul 2026)",
-    "IE00B3RBWM25": "$26.2B (Jul 2026)",
-    "IE00BKM4GZ66": "$44.5B (Jul 2026)",
-    "IE00B4K48X80": "$18.7B (Jul 2026)",
-    "LU1681047236": "$4.8B (Jul 2026)",
-    "JE00B1VS3770": "$7.6B (Aug 2026)",
+    "IE0032077012": "$11.7B",
+    "IE00B5KQNG97": "$8.6B",
+    "IE00B53QDK08": "$1.5B",
+    "DE000A0F5UJ7": "$3.6B",
+    "IE00B3RBWM25": "$23.4B",
+    "IE00BKM4GZ66": "$38.7B",
+    "IE00B4K48X80": "$15.9B",
+    "LU1681047236": "$4.1B",
+    "JE00B1VS3770": "$6.3B",
 }
 
 INDEX_DESCRIPTION = {
-    "IE0032077012": "Tracks the Nasdaq-100 Index, the 100 largest "
-    "non-financial companies listed on Nasdaq.",
-    "IE00B5KQNG97": "Tracks the S&P 500 Index, the 500 largest publicly "
-    "traded US companies by market value.",
-    "IE00B53QDK08": "Tracks the MSCI Japan Index, covering large- and "
-    "mid-cap Japanese stocks.",
-    "DE000A0F5UJ7": "Tracks the STOXX Europe 600 Banks Index, major bank "
-    "stocks from the pan-European STOXX 600.",
-    "IE00B3RBWM25": "Tracks the FTSE All-World Index, large- and mid-cap "
-    "stocks across developed and emerging markets "
-    "worldwide.",
-    "IE00BKM4GZ66": "Tracks the MSCI Emerging Markets IMI Index, large-, "
-    "mid-, and small-cap stocks across emerging markets.",
-    "IE00B4K48X80": "Tracks the MSCI Europe Index, large- and mid-cap "
-    "stocks from developed European countries.",
-    "LU1681047236": "Tracks the EURO STOXX 50 Index, the 50 largest "
-    "blue-chip companies in the eurozone.",
-    "JE00B1VS3770": "Physically-backed ETC holding allocated gold bullion, "
-    "tracking the spot price of gold in USD.",
+    "IE0032077012": "Nasdaq 100 (a selection of 100 stocks chosen from "
+    "among non-financial stocks listed on the NASDAQ stock exchange).",
+    "IE00B5KQNG97": "S&P 500 (500 largest US stocks).",
+    "IE00B53QDK08": "MSCI Japan (leading Japanese stocks).",
+    "DE000A0F5UJ7": "STOXX Europe 600 Banks (European banking sector).",
+    "IE00B3RBWM25": "FTSE All-World (stocks from developed and emerging "
+    "countries worldwide).",
+    "IE00BKM4GZ66": "MSCI Emerging Markets Investable Market (IMI) (stocks "
+    "from emerging markets worldwide).",
+    "IE00B4K48X80": "MSCI Europe (large and mid-cap stocks from European "
+    "developed countries).",
+    "LU1681047236": "EURO STOXX 50 (50 largest companies in the eurozone).",
+    "JE00B1VS3770": "Spot price of gold in US Dollar.",
 }
+
+CURRENCY = {
+    "IE0032077012": "USD",
+    "IE00B5KQNG97": "USD",
+    "IE00B53QDK08": "USD",
+    "DE000A0F5UJ7": "EUR",
+    "IE00B3RBWM25": "USD",
+    "IE00BKM4GZ66": "USD",
+    "IE00B4K48X80": "EUR",
+    "LU1681047236": "EUR",
+    "JE00B1VS3770": "USD",
+}
+
+POLICY = {
+    "IE0032077012": "Distr.",
+    "IE00B5KQNG97": "Distr.",
+    "IE00B53QDK08": "Acc.",
+    "DE000A0F5UJ7": "Distr.",
+    "IE00B3RBWM25": "Distr.",
+    "IE00BKM4GZ66": "Acc.",
+    "IE00B4K48X80": "Acc.",
+    "LU1681047236": "Acc.",
+    "JE00B1VS3770": "Acc.",
+}
+
+REPLICATION = {
+    "IE0032077012": "Phys",
+    "IE00B5KQNG97": "Phys",
+    "IE00B53QDK08": "Phys",
+    "DE000A0F5UJ7": "Phys",
+    "IE00B3RBWM25": "Phys",
+    "IE00BKM4GZ66": "Phys",
+    "IE00B4K48X80": "Phys",
+    "LU1681047236": "Phys",
+    "JE00B1VS3770": "Phys",
+}
+
+TER = {
+    "IE0032077012": "0.30%",
+    "IE00B5KQNG97": "0.09%",
+    "IE00B53QDK08": "0.12%",
+    "DE000A0F5UJ7": "0.47%",
+    "IE00B3RBWM25": "0.14%",
+    "IE00BKM4GZ66": "0.18%",
+    "IE00B4K48X80": "0.12%",
+    "LU1681047236": "0.09%",
+    "JE00B1VS3770": "0.39%",
+}
+
+HOLDINGS = {
+    "IE0032077012": "103",
+    "IE00B5KQNG97": "502",
+    "IE00B53QDK08": "168",
+    "DE000A0F5UJ7": "57",
+    "IE00B3RBWM25": "3758",
+    "IE00BKM4GZ66": "2991",
+    "IE00B4K48X80": "398",
+    "LU1681047236": "56",
+    "JE00B1VS3770": "-",
+}
+
+# ISO format (YYYY-MM-DD) - source dates were given as DD/MM/YYYY.
+START_DATE = {
+    "IE0032077012": "2002-12-02",
+    "IE00B5KQNG97": "2010-05-14",
+    "IE00B53QDK08": "2010-01-11",
+    "DE000A0F5UJ7": "2001-04-25",
+    "IE00B3RBWM25": "2012-05-22",
+    "IE00BKM4GZ66": "2014-05-30",
+    "IE00B4K48X80": "2009-09-25",
+    "LU1681047236": "2008-09-16",
+    "JE00B1VS3770": "2007-04-24",
+}
+
+FUND_DETAILS_SOURCE_NOTE = "Reference values from justetf.com, September 2026"
 
 DAYS_PER_MONTH = 30.42
 LOOKBACK_MONTHS = [3, 6, 12, 24, 36, 48, 60]
@@ -171,10 +238,27 @@ th, td { border: 1px solid #bbb; padding: 6px 12px; text-align: center; }
 th { background-color: #f0f0f0; }
 th.date-row { font-weight: normal; font-size: 0.8em; color: #666; }
 td:nth-child(2) { text-align: left; }
+td:nth-child(1), th:nth-child(1) { min-width: 146px; }
+td:nth-child(2), th:nth-child(2) { min-width: 420px; }
 .company-name { color: #2979ff; }
 .fund-type    { color: #d500f9; }
 .currency     { color: #00bfa5; }
 .acc-dist     { color: #ff6d00; }
+summary { list-style: none; cursor: pointer; display: inline; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "▸"; margin-left: 6px; color: #666; }
+details[open] summary::after { content: "▾"; }
+table.fund-details { table-layout: fixed; }
+table.fund-details td, table.fund-details th { overflow-wrap: break-word; }
+table.fund-details th:nth-child(1), table.fund-details td:nth-child(1) { width: 146px; }
+table.fund-details th:nth-child(2), table.fund-details td:nth-child(2) { width: 420px; }
+table.fund-details th:nth-child(3), table.fund-details td:nth-child(3) { width: 70px; }
+table.fund-details th:nth-child(4), table.fund-details td:nth-child(4) { width: 100px; }
+table.fund-details th:nth-child(5), table.fund-details td:nth-child(5) { width: 90px; }
+table.fund-details th:nth-child(6), table.fund-details td:nth-child(6) { width: 70px; }
+table.fund-details th:nth-child(7), table.fund-details td:nth-child(7) { width: 70px; }
+table.fund-details th:nth-child(8), table.fund-details td:nth-child(8) { width: 90px; }
+table.fund-details th:nth-child(9), table.fund-details td:nth-child(9) { width: 90px; }
 """
 
 # Browser-tab icon, embedded as a base64 SVG data URI so the report stays a
@@ -243,6 +327,39 @@ def render_name(name: str) -> str:
     text = highlight_terms(text, CURRENCIES, "currency")
     text = highlight_terms(text, ACC_DIST_TERMS, "acc-dist")
     return text
+
+
+def render_fund_details_table(isins: list[str], anchor: datetime) -> str:
+    """Build the flat "Fund details" reference table: one row per ISIN. Age
+    is computed from START_DATE relative to `anchor` rather than stored, so
+    it never goes stale between runs (Start Date itself isn't shown - Age
+    already conveys it more compactly)."""
+    headers = [
+        "ISIN", "Name", "Ccy", "Fund size", "Policy", "Repl.",
+        "TER", "Holdings", "Age (yrs)",
+    ]
+    lines = ['<table class="fund-details">', "  <thead>", "    <tr>"]
+    lines += [f"      <th>{html.escape(h)}</th>" for h in headers]
+    lines += ["    </tr>", "  </thead>", "  <tbody>"]
+
+    for isin in isins:
+        start_date = datetime.strptime(START_DATE[isin], "%Y-%m-%d")
+        age = round((anchor - start_date).days / 365.25, 1)
+        lines.append("    <tr>")
+        lines.append(f"      <td>{html.escape(isin)}</td>")
+        lines.append(
+            f"      <td><details><summary>{render_name(NAMES[isin])}</summary>"
+            f"{html.escape(INDEX_DESCRIPTION[isin])}</details></td>"
+        )
+        for value in (
+            CURRENCY[isin], FUND_SIZE[isin], POLICY[isin], REPLICATION[isin],
+            TER[isin], HOLDINGS[isin], f"{age:g}",
+        ):
+            lines.append(f"      <td>{html.escape(value)}</td>")
+        lines.append("    </tr>")
+
+    lines += ["  </tbody>", "</table>"]
+    return "\n".join(lines)
 
 
 def render_html_table(
@@ -676,4 +793,7 @@ if __name__ == "__main__":
                 tooltips=tooltips,
             )
         )
+        f.write("\n<h2>Fund details</h2>\n")
+        f.write(render_fund_details_table(list(TICKERS), anchor))
+        f.write(f'\n<p style="color:#666; font-style:italic;">{FUND_DETAILS_SOURCE_NOTE}</p>\n')
         f.write("\n</body></html>\n")
