@@ -349,7 +349,7 @@ def render_fund_details_table(isins: list[str], anchor: datetime) -> str:
         lines.append(f"      <td>{html.escape(isin)}</td>")
         lines.append(
             f"      <td><details><summary>{render_name(NAMES[isin])}</summary>"
-            f"{html.escape(INDEX_DESCRIPTION[isin])}</details></td>"
+            f"<span style=\"color:#666; font-style:italic; font-size: 0.9em\">{html.escape(INDEX_DESCRIPTION[isin])}</span></details></td>"
         )
         for value in (
             CURRENCY[isin], FUND_SIZE[isin], POLICY[isin], REPLICATION[isin],
@@ -795,5 +795,5 @@ if __name__ == "__main__":
         )
         f.write("\n<h2>Fund details</h2>\n")
         f.write(render_fund_details_table(list(TICKERS), anchor))
-        f.write(f'\n<p style="color:#666; font-style:italic;">{FUND_DETAILS_SOURCE_NOTE}</p>\n')
+        f.write(f'\n<p style="color:#666; font-style:italic; font-size: 0.7em">{FUND_DETAILS_SOURCE_NOTE}</p>\n')
         f.write("\n</body></html>\n")
