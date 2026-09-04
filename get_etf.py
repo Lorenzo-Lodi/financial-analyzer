@@ -127,17 +127,13 @@ FUND_SIZE = {
 }
 
 INDEX_DESCRIPTION = {
-    "IE0032077012": "Nasdaq 100 (a selection of 100 stocks chosen from "
-    "among non-financial stocks listed on the NASDAQ stock exchange).",
+    "IE0032077012": "Nasdaq 100 (a selection of 100 stocks chosen from among non-financial stocks listed on the NASDAQ stock exchange).",
     "IE00B5KQNG97": "S&P 500 (500 largest US stocks).",
     "IE00B53QDK08": "MSCI Japan (leading Japanese stocks).",
     "DE000A0F5UJ7": "STOXX Europe 600 Banks (European banking sector).",
-    "IE00B3RBWM25": "FTSE All-World (stocks from developed and emerging "
-    "countries worldwide).",
-    "IE00BKM4GZ66": "MSCI Emerging Markets Investable Market (IMI) (stocks "
-    "from emerging markets worldwide).",
-    "IE00B4K48X80": "MSCI Europe (large and mid-cap stocks from European "
-    "developed countries).",
+    "IE00B3RBWM25": "FTSE All-World (stocks from developed and emerging countries worldwide).",
+    "IE00BKM4GZ66": "MSCI Emerging Markets Investable Market (IMI) (stocks from emerging markets worldwide).",
+    "IE00B4K48X80": "MSCI Europe (large and mid-cap stocks from European developed countries).",
     "LU1681047236": "EURO STOXX 50 (50 largest companies in the eurozone).",
     "JE00B1VS3770": "Spot price of gold in US Dollar.",
 }
