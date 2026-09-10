@@ -107,9 +107,9 @@ NAMES = {
 # report (see highlight_terms/render_name below). Manually maintained, like
 # NAMES itself - add an entry here whenever a future ETF introduces a new
 # company/currency not already listed.
-COMPANIES = ["Invesco", "HSBC", "iShares", "Vanguard", "Amundi", "WisdomTree"]
+COMPANIES = ["Invesco", "HSBC", "iShares", "Vanguard", "Amundi", "WisdomTree", "UBS"]
 FUND_TYPES = ["UCITS ETF", "ETC"]
-CURRENCIES = ["USD", "EUR"]
+CURRENCIES = ["USD", "EUR", "CAD"]
 ACC_DIST_TERMS = ["Acc", "Dist"]
 
 # Fund reference data shown in the "Fund details" table (and, for FUND_SIZE/
@@ -152,7 +152,7 @@ CURRENCY = {
     "IE00B4K48X80": "EUR",
     "LU1681047236": "EUR",
     "JE00B1VS3770": "USD",
-    "LU0950672807": "USD"
+    "LU0950672807": "CAD"
 }
 
 POLICY = {
