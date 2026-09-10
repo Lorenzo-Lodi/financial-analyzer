@@ -87,6 +87,7 @@ TICKERS = {
     "IE00B4K48X80": "EUNK.DE",
     "LU1681047236": "V50A.DE",
     "JE00B1VS3770": "PHAU.L",
+    "LU0950672807": "CANA.MI"
 }
 
 NAMES = {
@@ -99,6 +100,7 @@ NAMES = {
     "IE00B4K48X80": "iShares Core MSCI Europe UCITS ETF EUR (Acc)",
     "LU1681047236": "Amundi Core EURO STOXX 50 UCITS ETF EUR (Acc)",
     "JE00B1VS3770": "WisdomTree Physical Gold (ETC)",
+    "LU0950672807": "UBS MSCI Canada UCITS ETF CAD (Acc)"
 }
 
 # Terms highlighted with a colored <span> inside the "name" cell of the HTML
@@ -124,6 +126,7 @@ FUND_SIZE = {
     "IE00B4K48X80": "$15.9B",
     "LU1681047236": "$4.1B",
     "JE00B1VS3770": "$6.3B",
+    "LU0950672807": "$0.7B"
 }
 
 INDEX_DESCRIPTION = {
@@ -136,6 +139,7 @@ INDEX_DESCRIPTION = {
     "IE00B4K48X80": "MSCI Europe (large and mid-cap stocks from European developed countries).",
     "LU1681047236": "EURO STOXX 50 (50 largest companies in the eurozone).",
     "JE00B1VS3770": "Spot price of gold in US Dollar.",
+    "LU0950672807": "MSCI Canada index (largest and most liquid Canadian stocks)."
 }
 
 CURRENCY = {
@@ -148,6 +152,7 @@ CURRENCY = {
     "IE00B4K48X80": "EUR",
     "LU1681047236": "EUR",
     "JE00B1VS3770": "USD",
+    "LU0950672807": "USD"
 }
 
 POLICY = {
@@ -160,6 +165,7 @@ POLICY = {
     "IE00B4K48X80": "Acc.",
     "LU1681047236": "Acc.",
     "JE00B1VS3770": "Acc.",
+    "LU0950672807": "Acc.",
 }
 
 REPLICATION = {
@@ -172,6 +178,7 @@ REPLICATION = {
     "IE00B4K48X80": "Phys",
     "LU1681047236": "Phys",
     "JE00B1VS3770": "Phys",
+    "LU0950672807": "Phys"
 }
 
 TER = {
@@ -184,6 +191,7 @@ TER = {
     "IE00B4K48X80": "0.12%",
     "LU1681047236": "0.09%",
     "JE00B1VS3770": "0.39%",
+    "LU0950672807": "0.33%"
 }
 
 HOLDINGS = {
@@ -196,6 +204,7 @@ HOLDINGS = {
     "IE00B4K48X80": "398",
     "LU1681047236": "56",
     "JE00B1VS3770": "-",
+    "LU0950672807": "84"
 }
 
 # ISO format (YYYY-MM-DD) - source dates were given as DD/MM/YYYY.
@@ -209,6 +218,7 @@ START_DATE = {
     "IE00B4K48X80": "2009-09-25",
     "LU1681047236": "2008-09-16",
     "JE00B1VS3770": "2007-04-24",
+    "LU0950672807": "2017-07-13"
 }
 
 FUND_DETAILS_SOURCE_NOTE = "Reference values from justetf.com, September 2026"
