@@ -7,20 +7,6 @@ a target date and for several lookback points in the past (3 months,
 Yahoo Finance does not index instruments by ISIN natively, so each ISIN is
 mapped below to a known-working Yahoo ticker symbol (confirmed by trial).
 
-Confirmed tickers (as of 2026-08-10):
-
-    ISIN            Name                                            Ticker
-    --------------  ----------------------------------------------  -------
-    IE0032077012    Invesco EQQQ Nasdaq-100 UCITS ETF                EQQQ.L
-    IE00B5KQNG97    HSBC S&P 500 UCITS ETF USD                       H4ZF.DE
-    IE00B53QDK08    iShares MSCI Japan UCITS ETF USD (Acc)           SXR5.DE
-    DE000A0F5UJ7    iShares STOXX Europe 600 Banks UCITS ETF (DE)    EXV1.DE
-    IE00B3RBWM25    Vanguard FTSE All-World UCITS ETF (USD) Dist.    VWRL.L
-    IE00BKM4GZ66    iShares Core MSCI EM IMI UCITS ETF (Acc)         EIMI.L
-    IE00B4K48X80    iShares Core MSCI Europe UCITS ETF EUR (Acc)     EUNK.DE
-    LU1681047236    Amundi Core EURO STOXX 50 UCITS ETF EUR (Acc)    V50A.DE
-    JE00B1VS3770    WisdomTree Physical Gold (ETC)                  PHAU.L
-
 Note: EQQQ.L, VWRL.L, EIMI.L and PHAU.L trade on the LSE in GBX (pence), not
 EUR/USD - convert accordingly before mixing with the other rows.
 
@@ -87,7 +73,8 @@ TICKERS = {
     "IE00B4K48X80": "EUNK.DE",
     "LU1681047236": "V50A.DE",
     "JE00B1VS3770": "PHAU.L",
-    "LU0950672807": "CANA.MI"
+    "LU0950672807": "CANA.MI",
+    "IE00B8FHGS14": "MVOL.L"
 }
 
 NAMES = {
@@ -100,7 +87,8 @@ NAMES = {
     "IE00B4K48X80": "iShares Core MSCI Europe UCITS ETF EUR (Acc)",
     "LU1681047236": "Amundi Core EURO STOXX 50 UCITS ETF EUR (Acc)",
     "JE00B1VS3770": "WisdomTree Physical Gold (ETC)",
-    "LU0950672807": "UBS MSCI Canada UCITS ETF CAD (Acc)"
+    "LU0950672807": "UBS MSCI Canada UCITS ETF CAD (Acc)",
+    "IE00B8FHGS14": "iShares Edge MSCI World Minimum Volatility UCITS ETF USD (Acc)"
 }
 
 # Terms highlighted with a colored <span> inside the "name" cell of the HTML
@@ -114,7 +102,7 @@ ACC_DIST_TERMS = ["Acc", "Dist"]
 
 # Fund reference data shown in the "Fund details" table (and, for FUND_SIZE/
 # INDEX_DESCRIPTION, also reused in the hover tooltip on the name cell).
-# Manually curated, like TICKERS/NAMES above. Source: onlyetf.com, Sep 2026 -
+# Manually curated, like TICKERS/NAMES above. Source: justetf.com, Sep 2026 -
 # see FUND_DETAILS_SOURCE_NOTE below.
 FUND_SIZE = {
     "IE0032077012": "$11.7B",
@@ -126,7 +114,8 @@ FUND_SIZE = {
     "IE00B4K48X80": "$15.9B",
     "LU1681047236": "$4.1B",
     "JE00B1VS3770": "$6.3B",
-    "LU0950672807": "$0.7B"
+    "LU0950672807": "$0.7B",
+    "IE00B8FHGS14": "$2.9B"
 }
 
 INDEX_DESCRIPTION = {
@@ -139,7 +128,8 @@ INDEX_DESCRIPTION = {
     "IE00B4K48X80": "MSCI Europe (large and mid-cap stocks from European developed countries).",
     "LU1681047236": "EURO STOXX 50 (50 largest companies in the eurozone).",
     "JE00B1VS3770": "Spot price of gold in US Dollar.",
-    "LU0950672807": "MSCI Canada index (largest and most liquid Canadian stocks)."
+    "LU0950672807": "MSCI Canada index (largest and most liquid Canadian stocks).",
+    "IE00B8FHGS14": "MSCI World Minimum Volatility (developed-market stocks from 23 countries, weighted to minimize overall risk)."
 }
 
 CURRENCY = {
@@ -152,7 +142,8 @@ CURRENCY = {
     "IE00B4K48X80": "EUR",
     "LU1681047236": "EUR",
     "JE00B1VS3770": "USD",
-    "LU0950672807": "CAD"
+    "LU0950672807": "CAD",
+    "IE00B8FHGS14": "USD"
 }
 
 POLICY = {
@@ -166,6 +157,7 @@ POLICY = {
     "LU1681047236": "Acc.",
     "JE00B1VS3770": "Acc.",
     "LU0950672807": "Acc.",
+    "IE00B8FHGS14": "Acc.",
 }
 
 REPLICATION = {
@@ -178,7 +170,8 @@ REPLICATION = {
     "IE00B4K48X80": "Phys",
     "LU1681047236": "Phys",
     "JE00B1VS3770": "Phys",
-    "LU0950672807": "Phys"
+    "LU0950672807": "Phys",
+    "IE00B8FHGS14": "Phys"
 }
 
 TER = {
@@ -191,7 +184,8 @@ TER = {
     "IE00B4K48X80": "0.12%",
     "LU1681047236": "0.09%",
     "JE00B1VS3770": "0.39%",
-    "LU0950672807": "0.33%"
+    "LU0950672807": "0.33%",
+    "IE00B8FHGS14": "0.30%"
 }
 
 HOLDINGS = {
@@ -204,7 +198,8 @@ HOLDINGS = {
     "IE00B4K48X80": "398",
     "LU1681047236": "56",
     "JE00B1VS3770": "-",
-    "LU0950672807": "84"
+    "LU0950672807": "84",
+    "IE00B8FHGS14": "296"
 }
 
 # ISO format (YYYY-MM-DD) - source dates were given as DD/MM/YYYY.
@@ -218,10 +213,15 @@ START_DATE = {
     "IE00B4K48X80": "2009-09-25",
     "LU1681047236": "2008-09-16",
     "JE00B1VS3770": "2007-04-24",
-    "LU0950672807": "2017-07-13"
+    "LU0950672807": "2017-07-13",
+    "IE00B8FHGS14": "2012-11-30"
 }
 
-FUND_DETAILS_SOURCE_NOTE = "Reference values from justetf.com, September 2026"
+# Raw HTML (written to the report unescaped), so the source name can be a link.
+FUND_DETAILS_SOURCE_NOTE = (
+    'Reference values from <a href="https://www.justetf.com/">justetf.com</a>, '
+    "September 2026"
+)
 
 DAYS_PER_MONTH = 30.42
 LOOKBACK_MONTHS = [3, 6, 12, 24, 36, 48, 60]
